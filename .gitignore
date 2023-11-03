@@ -2,3 +2,5 @@ server/*.txt
 server/*.exe
 client/*.txt
 client/*.exe
+/.idea/*.xml
+/.idea/inspectionProfiles/*.xml

