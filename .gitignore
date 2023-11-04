@@ -2,4 +2,5 @@ server/*.txt
 server/*.exe
 client/*.txt
 client/*.exe
+server/screenshots/*
 /.idea/
