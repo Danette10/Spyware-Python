@@ -1,5 +1,7 @@
 import argparse, socket, threading, time, queue, os
+
 SCREENSHOT_DIR = 'screenshots/{ip}/{date}'
+
 
 # Function to parse the arguments
 def args_parse():
@@ -10,12 +12,14 @@ def args_parse():
     parser.add_argument('-k', '--kill', action='store_true', help='Kill the server and delete client files')
     return parser.parse_args()
 
+
 # Function to display the list of files received
 def show_files():
     files = os.listdir('.')
     print("Files received:")
     for file in files:
         print(file)
+
 
 # Function to read the content of a file
 def read_file(filename):
@@ -24,6 +28,7 @@ def read_file(filename):
             print(file.read())
     except FileNotFoundError:
         print(f"File {filename} not found")
+
 
 # Function to handle the commands
 def handle_commands(args, server_socket, client_socket):
@@ -39,9 +44,10 @@ def handle_commands(args, server_socket, client_socket):
             client_socket.sendall('STOP'.encode())
             server_socket.close()
             print('Server killed')
-        except:
+        except socket.error:
             print('There is no client connected')
             pass
+
 
 # Function to read the commands
 def read_commands(server_socket, client_socket):
@@ -51,7 +57,8 @@ def read_commands(server_socket, client_socket):
             args = args_parse()
             handle_commands(args, server_socket, client_socket)
 
-# Function to setup the server
+
+# Function to set up the server
 def setup_server(host, port):
     global SCREENSHOT_DIR
     ip = socket.gethostbyname(socket.gethostname())
@@ -65,12 +72,14 @@ def setup_server(host, port):
     print(f"Server listening on {host}:{port}")
     return server_socket
 
+
 # Function to accept the connections
 def accept_connections(server_socket):
     while True:
         client_socket, client_address = server_socket.accept()
         print(f"Connection from {client_address}")
         threading.Thread(target=handle_client, args=(client_socket,)).start()
+
 
 # Function to handle the client
 def handle_client(client_socket):
@@ -87,6 +96,7 @@ def handle_client(client_socket):
             break
         data_queue.put(file_data)
 
+
 # Function to write to the file
 def write_to_file(filename, data_queue):
     while True:
@@ -96,15 +106,17 @@ def write_to_file(filename, data_queue):
                 file.write(file_data)
         time.sleep(10)
 
+
 def main():
     args = args_parse()
     host = 'localhost'
     port = args.listen
     server_socket = setup_server(host, port)
-    command_thread = threading.Thread(target=read_commands, args=(server_socket,None))
+    command_thread = threading.Thread(target=read_commands, args=(server_socket, None))
     command_thread.daemon = True
     command_thread.start()
     accept_connections(server_socket)
+
 
 if __name__ == '__main__':
     main()
