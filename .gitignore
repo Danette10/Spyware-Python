@@ -1,6 +1,10 @@
-server/*.txt
-server/*.exe
-client/*.txt
-client/*.exe
+server/reads/*
+server/logs/*
 server/screenshots/*
+server/*.exe
+
+client/*.txt
+client/*.log
+client/*.exe
+
 /.idea/
