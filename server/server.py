@@ -260,7 +260,7 @@ def accept_connections(server_socket):
 
 def main():
     args = args_parse()
-    host = 'localhost'
+    host = '192.168.18.144'
     port = args.listen
     server_socket = create_server_socket(host, port)
     accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))

