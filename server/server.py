@@ -206,7 +206,7 @@ def handle_client(client_socket, client_address):
                     global SCREENSHOT_DIR
                     screenshot = client_info['screenshot']
                     screenshot_bytes = base64.b64decode(screenshot)
-                    current_time = time.strftime("%H-%M-%S")
+                    current_time = time.strftime("%Hh-%Mmin-%Ss")
                     dir_name = SCREENSHOT_DIR.format(ip=ip, date=date)
 
                     if not os.path.exists(dir_name):
