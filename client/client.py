@@ -7,6 +7,7 @@ import logging
 import os
 import platform
 import socket
+import sys
 import threading
 import time
 
@@ -24,13 +25,19 @@ def get_os():
 
 
 def create_connection(host, port):
+    max_reconnect_time = 10 * 60
+    reconnect_interval = 10
+    start_time = time.time()
     while True:
         try:
             return socket.create_connection((host, port))
         except socket.error as e:
-            print(f"Error creating connection: {e}")
-            print("Attempting to reconnect in 5 seconds...")
-            time.sleep(5)
+            if time.time() - start_time > max_reconnect_time:
+                print(f"Max reconnect time reached: {max_reconnect_time} seconds")
+                sys.exit(0)
+            print(f"Error connecting to {host}:{port}: {e}")
+            print(f"Retrying in {reconnect_interval} seconds...")
+            time.sleep(reconnect_interval)
 
 
 def setup_logging(filename):
