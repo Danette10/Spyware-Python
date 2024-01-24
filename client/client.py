@@ -23,7 +23,6 @@ webcam_thread = None
 LOG_DIR_WINDOWS = os.path.join(os.environ['USERPROFILE'], 'AppData', 'Local', 'Temp', 'logs')
 LOG_DIR_LINUX = '/tmp/logs'
 
-
 # Function to get the OS
 def get_os():
     return platform.system()
