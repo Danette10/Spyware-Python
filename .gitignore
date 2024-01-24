@@ -6,5 +6,5 @@ server/*.exe
 client/*.txt
 client/*.log
 client/*.exe
-
+.env
 /.idea/

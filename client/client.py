@@ -11,6 +11,7 @@ import socket
 import sys
 import threading
 import time
+import dotenv
 
 import cv2
 import pyautogui
@@ -208,8 +209,9 @@ def receive_commands(sock):
 # Main function
 def main():
     global stop
-    host = 'localhost'
-    port = 9809
+    dotenv.load_dotenv()
+    host = os.getenv('HOST')
+    port = int(os.getenv('PORT'))
     current_hour = datetime.datetime.now().strftime("%Hh")
     current_date = datetime.datetime.now().strftime("%d%m%Y")
     log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
