@@ -318,7 +318,6 @@ def main():
     dotenv.load_dotenv(dotenv.find_dotenv())
     host = os.environ.get('HOST')
     port = args.listen
-    print(f"Server listening on {host}:{port}")
     server_socket = create_server_socket(host, port)
     accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))
     accept_thread.start()
