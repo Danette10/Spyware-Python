@@ -6,3 +6,18 @@ By using or interacting with this software in any way, you agree to use it solel
 All users are encouraged to report any vulnerabilities or security issues found within this software to the author(s) for improvement. Remember, unauthorized access to computer systems is illegal and punishable by law. Always conduct your security research within legal boundaries and with proper authorization.
 
 Use this software at your own risk.
+
+# Installation
+
+1. Clone the repository
+2. Install the required dependencies using :
+
+> `pip install -r requirements.txt`
+
+3. Create a `.env` file in the root directory and add the following environment variables:
+
+```
+HOST=your_server_ip
+PORT=your_server_port
+```
+
