@@ -7,7 +7,6 @@ import threading
 import time
 
 import cv2
-import dotenv
 import numpy as np
 
 # Global variables
@@ -315,8 +314,7 @@ def accept_connections(server_socket):
 # Main function
 def main():
     args = args_parse()
-    dotenv.load_dotenv(dotenv.find_dotenv())
-    host = os.environ.get('HOST')
+    host = 'localhost'
     port = args.listen
     server_socket = create_server_socket(host, port)
     accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))
