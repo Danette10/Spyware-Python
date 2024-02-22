@@ -254,7 +254,6 @@ def process_log_command(client_info, client_socket, ip, date):
 
     with open(os.path.join(dir_name, filename), 'wb') as f:
         f.write(file_content_bytes)
-    print(f"Log file {filename} saved to {dir_name}")
 
 
 def process_copy_command(client_info, client_socket, ip, date):
@@ -345,7 +344,7 @@ def accept_connections(server_socket):
 # Main function
 def main():
     args = args_parse()
-    host = '172.20.10.3'
+    host = 'localhost'
     port = args.listen
     server_socket = create_server_socket(host, port)
     accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))

