@@ -186,12 +186,12 @@ def handle_client(client_socket, client_address):
         try:
             # Réception des données en continu jusqu'à ce qu'il n'y ait plus rien à lire
             while True:
-                part = client_socket.recv(4096)  # Augmentation de la taille pour une meilleure efficacité
+                part = client_socket.recv(5242880)  # Augmentation de la taille pour une meilleure efficacité
                 if not part:
                     break
                 data += part
                 # Si la taille de la dernière partie est inférieure à 4096, on suppose que c'est la fin du message
-                if len(part) < 4096:
+                if len(part) < 5242880:
                     break
 
             if not data:
