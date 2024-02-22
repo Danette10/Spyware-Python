@@ -8,3 +8,4 @@ client/*.log
 client/*.exe
 .env
 /.idea/
+/server/clipboards/172.20.10.2-22022024/10h-clipboard.txt
